@@ -1,6 +1,6 @@
 use serde::de::value::BorrowedStrDeserializer;
 use serde::de::{self, DeserializeOwned, DeserializeSeed, SeqAccess, Visitor};
-use serde::{forward_to_deserialize_any, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, forward_to_deserialize_any};
 use std::marker::PhantomData;
 use std::{fmt, slice, str};
 
@@ -602,13 +602,13 @@ macro_rules! deserialize_num {
             match self.data_type {
                 Data::Float(v) => visitor.$visit(*v as $typ),
                 Data::Int(v) => visitor.$visit(*v as $typ),
-                Data::String(ref s) => {
+                Data::String(s) => {
                     let v = s.parse().map_err(|_| {
                         DeError::Custom(format!("Expecting {}, got '{}'", stringify!($typ), s))
                     })?;
                     visitor.$visit(v)
                 }
-                Data::Error(ref err) => Err(DeError::CellError {
+                Data::Error(err) => Err(DeError::CellError {
                     err: err.clone(),
                     pos: self.pos,
                 }),
@@ -644,7 +644,7 @@ impl<'a, 'de> serde::Deserializer<'de> for DataDeserializer<'a> {
             Data::DateTime(v) => visitor.visit_f64(v.as_f64()),
             Data::DateTimeIso(v) => visitor.visit_str(v),
             Data::DurationIso(v) => visitor.visit_str(v),
-            Data::Error(ref err) => Err(DeError::CellError {
+            Data::Error(err) => Err(DeError::CellError {
                 err: err.clone(),
                 pos: self.pos,
             }),
@@ -664,7 +664,7 @@ impl<'a, 'de> serde::Deserializer<'de> for DataDeserializer<'a> {
             Data::DateTime(v) => visitor.visit_str(&v.to_string()),
             Data::DateTimeIso(v) => visitor.visit_str(v),
             Data::DurationIso(v) => visitor.visit_str(v),
-            Data::Error(ref err) => Err(DeError::CellError {
+            Data::Error(err) => Err(DeError::CellError {
                 err: err.clone(),
                 pos: self.pos,
             }),
@@ -678,7 +678,7 @@ impl<'a, 'de> serde::Deserializer<'de> for DataDeserializer<'a> {
         match self.data_type {
             Data::String(v) => visitor.visit_bytes(v.as_bytes()),
             Data::Empty => visitor.visit_bytes(&[]),
-            Data::Error(ref err) => Err(DeError::CellError {
+            Data::Error(err) => Err(DeError::CellError {
                 err: err.clone(),
                 pos: self.pos,
             }),
@@ -706,7 +706,7 @@ impl<'a, 'de> serde::Deserializer<'de> for DataDeserializer<'a> {
     {
         match self.data_type {
             Data::Bool(v) => visitor.visit_bool(*v),
-            Data::String(ref v) => match &**v {
+            Data::String(v) => match &**v {
                 "TRUE" | "true" | "True" => visitor.visit_bool(true),
                 "FALSE" | "false" | "False" => visitor.visit_bool(false),
                 d => Err(DeError::Custom(format!("Expecting bool, got '{}'", d))),
@@ -717,7 +717,7 @@ impl<'a, 'de> serde::Deserializer<'de> for DataDeserializer<'a> {
             Data::DateTime(v) => visitor.visit_bool(v.as_f64() != 0.),
             Data::DateTimeIso(_) => visitor.visit_bool(true),
             Data::DurationIso(_) => visitor.visit_bool(true),
-            Data::Error(ref err) => Err(DeError::CellError {
+            Data::Error(err) => Err(DeError::CellError {
                 err: err.clone(),
                 pos: self.pos,
             }),
@@ -729,10 +729,10 @@ impl<'a, 'de> serde::Deserializer<'de> for DataDeserializer<'a> {
         V: Visitor<'de>,
     {
         match self.data_type {
-            Data::String(ref s) if s.len() == 1 => {
+            Data::String(s) if s.len() == 1 => {
                 visitor.visit_char(s.chars().next().expect("s not empty"))
             }
-            Data::Error(ref err) => Err(DeError::CellError {
+            Data::Error(err) => Err(DeError::CellError {
                 err: err.clone(),
                 pos: self.pos,
             }),
@@ -746,7 +746,7 @@ impl<'a, 'de> serde::Deserializer<'de> for DataDeserializer<'a> {
     {
         match self.data_type {
             Data::Empty => visitor.visit_unit(),
-            Data::Error(ref err) => Err(DeError::CellError {
+            Data::Error(err) => Err(DeError::CellError {
                 err: err.clone(),
                 pos: self.pos,
             }),
@@ -788,7 +788,7 @@ impl<'a, 'de> serde::Deserializer<'de> for DataDeserializer<'a> {
 
         match self.data_type {
             Data::String(s) => visitor.visit_enum(s.as_str().into_deserializer()),
-            Data::Error(ref err) => Err(DeError::CellError {
+            Data::Error(err) => Err(DeError::CellError {
                 err: err.clone(),
                 pos: self.pos,
             }),
